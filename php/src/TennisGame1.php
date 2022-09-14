@@ -4,79 +4,137 @@ namespace TennisGame;
 
 class TennisGame1 implements TennisGame
 {
-    private $m_score1 = 0;
-    private $m_score2 = 0;
-    private $player1Name = '';
-    private $player2Name = '';
+    private Player $player1;
+    private Player $player2;
 
-    public function __construct($player1Name, $player2Name)
+    public function __construct(string $player1Name, string $player2Name)
     {
-        $this->player1Name = $player1Name;
-        $this->player2Name = $player2Name;
+        $this->player1 = new Player($player1Name);
+        $this->player2 = new Player($player2Name);
     }
 
-    public function wonPoint($playerName)
+    public function wonPoint($playerName): void
     {
-        if ('player1' == $playerName) {
-            $this->m_score1++;
+        if ($this->player1->getName() === $playerName) {
+            $this->player1->wonPoint();
+        } elseif ($this->player2->getName() === $playerName) {
+            $this->player2->wonPoint();
         } else {
-            $this->m_score2++;
+            throw new \LogicException();
         }
     }
 
-    public function getScore()
+    public function getScore(): string
     {
-        $score = "";
-        if ($this->m_score1 == $this->m_score2) {
-            switch ($this->m_score1) {
-                case 0:
-                    $score = "Love-All";
-                    break;
-                case 1:
-                    $score = "Fifteen-All";
-                    break;
-                case 2:
-                    $score = "Thirty-All";
-                    break;
-                default:
-                    $score = "Deuce";
-                    break;
+        return Referee::callScore($this->player1, $this->player2);
+    }
+}
+
+class Referee
+{
+    public static function callScore(Player $player1, Player $player2): string
+    {
+        if ($player1->getPoint()->equal($player2->getPoint())) {
+            if ($player1->getPoint()->isUnderDeuce()) {
+                return sprintf('%s-All', $player1->getPoint()->toString());
             }
-        } elseif ($this->m_score1 >= 4 || $this->m_score2 >= 4) {
-            $minusResult = $this->m_score1 - $this->m_score2;
-            if ($minusResult == 1) {
-                $score = "Advantage player1";
-            } elseif ($minusResult == -1) {
-                $score = "Advantage player2";
-            } elseif ($minusResult >= 2) {
-                $score = "Win for player1";
+            return 'Deuce';
+        }
+
+        if (self::isAfterDeuce($player1->getPoint(), $player2->getPoint())) {
+            if (abs($player1->getPoint()->getValue() - $player2->getPoint()->getValue()) === 1) {
+                $score = 'Advantage ';
+            }  else {
+                $score = 'Win for ';
+            }
+            if ($player1->getPoint()->getValue() > $player2->getPoint()->getValue()) {
+                $score .= $player1->getName();
             } else {
-                $score = "Win for player2";
+                $score .= $player2->getName();
             }
-        } else {
-            for ($i = 1; $i < 3; $i++) {
-                if ($i == 1) {
-                    $tempScore = $this->m_score1;
-                } else {
-                    $score .= "-";
-                    $tempScore = $this->m_score2;
-                }
-                switch ($tempScore) {
-                    case 0:
-                        $score .= "Love";
-                        break;
-                    case 1:
-                        $score .= "Fifteen";
-                        break;
-                    case 2:
-                        $score .= "Thirty";
-                        break;
-                    case 3:
-                        $score .= "Forty";
-                        break;
-                }
-            }
+            return $score;
         }
-        return $score;
+
+        return sprintf(
+            '%s-%s',
+            $player1->getPoint()->toString(),
+            $player2->getPoint()->toString(),
+        );
+    }
+
+    private static function isAfterDeuce(Point $point1, Point $point2): bool
+    {
+        return $point1->getValue() >= 4 || $point2->getValue() >= 4;
+    }
+}
+
+class Point
+{
+    public function __construct(private int $value)
+    {
+    }
+
+    /**
+     * @return int
+     */
+    public function getValue(): int
+    {
+        return $this->value;
+    }
+
+    public function increment(): void
+    {
+        $this->value++;
+    }
+
+    public function equal(self $that): bool
+    {
+        return $this->getValue() === $that->getValue();
+    }
+
+    public function toString(): string
+    {
+        $map = [
+            0 => 'Love',
+            1 => 'Fifteen',
+            2 => 'Thirty',
+            3 => 'Forty',
+        ];
+        return $map[$this->value];
+    }
+
+    public function isUnderDeuce(): bool
+    {
+        return $this->value < 3;
+    }
+}
+
+class Player
+{
+    private Point $point;
+
+    public function __construct(private string $name)
+    {
+        $this->point = new Point(0);
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getPoint(): Point
+    {
+        return $this->point;
+    }
+
+    public function wonPoint(): void
+    {
+        $this->point->increment();
+    }
+
+    public function equal(self $that): bool
+    {
+        return $this->getName() === $that->getName();
     }
 }
